@@ -15,36 +15,22 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
-
-def get_days_in_year(year: int) -> int:
-    """Return the number of days in the given year."""
-    return 366 if calendar.isleap(year) else 365
-
-
 def get_capture_time(date: datetime) -> datetime:
     """
     Calculate the capture time for a given date.
     
-    Linearly interpolates from 6:00 AM on January 1st to 6:00 PM on December 31st.
+    Linearly interpolates from 00:00 on January 1st to 00:00 on January 1st of the next year.
     """
     year = date.year
-    days_in_year = get_days_in_year(year)
+    start_date = datetime(year, 1, 1, 0, 0, 0)
+    end_date = datetime(year+1, 1, 1, 0, 0, 0)
+    days_in_year = (end_date - start_date).days
     day_of_year = date.timetuple().tm_yday  # 1-indexed (Jan 1 = 1)
     
-    # Calculate progress through the year (0.0 on Jan 1, 1.0 on Dec 31)
-    progress = (day_of_year - 1) / days_in_year
+    # Calculate progress through the year (0.0 on Jan 1, 1.0 on Jan 1 of the next year)
+    progress = (day_of_year - 1) / (days_in_year - 1) # -1 to advance the progress slightly every day
     
-    # Interpolate between start and end hour
-    capture_hour = progress * 24
-    
-    # Convert to hours and minutes
-    hours = capture_hour
-    minutes = (capture_hour - int(hours)) * 60
-    seconds = (minutes - int(minutes)) * 60
-    microseconds = (seconds - int(seconds)) * 1_000_000
-    
-    return date.replace(hour=int(hours), minute=int(minutes), second=int(seconds), microsecond=int(microseconds))
-
+    return start_date + ((end_date - start_date) * progress)
 
 def capture_keyframe():
     """Download a keyframe from the stream and save it as PNG."""
@@ -122,7 +108,7 @@ def get_next_capture_time() -> datetime:
 
 def main():
     logger.info("Starting timelapse capture service...")
-    logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 24:00 on Dec 31")
+    logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 00:00 on Jan 1 of the next year")
     
     while True:
         next_capture = get_next_capture_time()
