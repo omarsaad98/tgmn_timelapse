@@ -26,12 +26,17 @@ def get_capture_time(date: datetime) -> datetime:
     end_date = datetime(year+1, 1, 1, 0, 0, 0)
     days_in_year = (end_date - start_date).days
     day_of_year = date.timetuple().tm_yday  # 1-indexed (Jan 1 = 1)
-    
-    # Calculate progress through the year (0.0 on Jan 1, 1.0 on Jan 1 of the next year)
-    progress = (day_of_year - 1) / (days_in_year - 1) # -1 to advance the progress slightly every day
-    
-    return start_date + ((end_date - start_date) * progress)
 
+    progress = (day_of_year - 1) / days_in_year
+
+    seconds_in_year = (end_date - start_date).total_seconds()
+    seconds_in_day = seconds_in_year / days_in_year
+    seconds_to_add_each_day = seconds_in_day / days_in_year
+
+    start_of_day = start_date + timedelta(seconds=progress * seconds_in_year)
+
+    return start_of_day + timedelta(seconds=seconds_to_add_each_day * day_of_year)
+    
 def capture_keyframe():
     """Download a keyframe from the stream and save it as PNG."""
     settings = Settings()
