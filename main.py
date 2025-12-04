@@ -30,13 +30,15 @@ def get_capture_time(date: datetime) -> datetime:
     progress = (day_of_year - 1) / (days_in_year - 1)
     
     # Interpolate between start and end hour
-    capture_hour = START_HOUR + progress * (END_HOUR - START_HOUR)
+    capture_hour = progress * (24)
     
     # Convert to hours and minutes
-    hours = int(capture_hour)
-    minutes = int((capture_hour - hours) * 60)
+    hours = capture_hour
+    minutes = (capture_hour - int(hours)) * 60
+    seconds = (minutes - int(minutes)) * 60
+    microseconds = (seconds - int(seconds)) * 1_000_000
     
-    return date.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+    return date.replace(hour=int(hours), minute=int(minutes), second=int(seconds), microsecond=int(microseconds))
 
 
 def capture_keyframe():
@@ -81,6 +83,21 @@ def capture_keyframe():
         print(f"[{datetime.now()}] ffmpeg not found. Please install ffmpeg.")
 
 
+def print_monthly_capture_times(year: int | None = None):
+    """Print the capture time for the first day of every month."""
+    if year is None:
+        year = datetime.now().year
+    
+    print(f"Capture times for the 1st of each month in {year}:")
+    print("-" * 40)
+    
+    for month in range(1, 13):
+        date = datetime(year, month, 1)
+        capture_time = get_capture_time(date)
+        month_name = calendar.month_name[month]
+        print(f"{month_name:12} 1: {capture_time.strftime('%H:%M:%S')}")
+
+
 def get_next_capture_time() -> datetime:
     """
     Get the next scheduled capture time.
@@ -121,4 +138,4 @@ def main():
 
 
 if __name__ == "__main__":
-    capture_keyframe()
+    main()
