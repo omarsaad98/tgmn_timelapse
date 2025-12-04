@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+saved_images/
+.git/
+.gitignore
+*.md
+.python-version
+

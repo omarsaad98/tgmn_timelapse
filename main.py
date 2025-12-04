@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import os
 import time
@@ -6,9 +7,13 @@ from datetime import datetime, timedelta
 
 from config import Settings
 
-# Capture time range: linearly from 6am on Jan 1 to 6pm on Dec 31
-START_HOUR = 6   # 6:00 AM
-END_HOUR = 18    # 6:00 PM
+logger = logging.getLogger("tgmn-timelapse")
+
+logger.setLevel(logging.INFO)
+
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
 
 
 def get_days_in_year(year: int) -> int:
@@ -27,10 +32,10 @@ def get_capture_time(date: datetime) -> datetime:
     day_of_year = date.timetuple().tm_yday  # 1-indexed (Jan 1 = 1)
     
     # Calculate progress through the year (0.0 on Jan 1, 1.0 on Dec 31)
-    progress = (day_of_year - 1) / (days_in_year - 1)
+    progress = (day_of_year - 1) / days_in_year
     
     # Interpolate between start and end hour
-    capture_hour = progress * (24)
+    capture_hour = progress * 24
     
     # Convert to hours and minutes
     hours = capture_hour
@@ -74,13 +79,13 @@ def capture_keyframe():
             timeout=60,
         )
         if result.returncode == 0:
-            print(f"[{datetime.now()}] Keyframe saved as {filepath}")
+            logger.info("[%s] Keyframe saved as %s", datetime.now(), filepath)
         else:
-            print(f"[{datetime.now()}] Error capturing keyframe: {result.stderr}")
+            logger.info("[%s] Error capturing keyframe: %s", datetime.now(), result.stderr)
     except subprocess.TimeoutExpired:
-        print(f"[{datetime.now()}] Timeout while capturing keyframe")
+        logger.info("[%s] Timeout while capturing keyframe", datetime.now())
     except FileNotFoundError:
-        print(f"[{datetime.now()}] ffmpeg not found. Please install ffmpeg.")
+        logger.info("[%s] ffmpeg not found. Please install ffmpeg.", datetime.now())
 
 
 def print_monthly_capture_times(year: int | None = None):
@@ -88,14 +93,14 @@ def print_monthly_capture_times(year: int | None = None):
     if year is None:
         year = datetime.now().year
     
-    print(f"Capture times for the 1st of each month in {year}:")
-    print("-" * 40)
+    logger.info("Capture times for the 1st of each month in %s:", year)
+    logger.info("-" * 40)
     
     for month in range(1, 13):
         date = datetime(year, month, 1)
         capture_time = get_capture_time(date)
         month_name = calendar.month_name[month]
-        print(f"{month_name:12} 1: {capture_time.strftime('%H:%M:%S')}")
+        logger.info("%s 1: %s", month_name, capture_time.strftime('%H:%M:%S'))
 
 
 def get_next_capture_time() -> datetime:
@@ -116,14 +121,14 @@ def get_next_capture_time() -> datetime:
 
 
 def main():
-    print("Starting timelapse capture service...")
-    print(f"Capture time linearly progresses from {START_HOUR}:00 on Jan 1 to {END_HOUR}:00 on Dec 31")
+    logger.info("Starting timelapse capture service...")
+    logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 24:00 on Dec 31")
     
     while True:
         next_capture = get_next_capture_time()
         now = datetime.now()
         
-        print(f"[{now}] Next capture scheduled for {next_capture}")
+        logger.info("Next capture scheduled for %s", next_capture)
         
         # Sleep until the next capture time
         sleep_seconds = (next_capture - now).total_seconds()
