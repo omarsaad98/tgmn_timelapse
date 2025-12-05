@@ -4,10 +4,15 @@ import os
 import time
 import calendar
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from config import Settings
 
 logger = logging.getLogger("tgmn-timelapse")
+
+# Global settings instance for timezone
+_settings = Settings()
+_tz = ZoneInfo(_settings.timezone)
 
 logger.setLevel(logging.INFO)
 
@@ -22,8 +27,8 @@ def get_capture_time(date: datetime) -> datetime:
     Linearly interpolates from 00:00 on January 1st to 00:00 on January 1st of the next year.
     """
     year = date.year
-    start_date = datetime(year, 1, 1, 0, 0, 0)
-    end_date = datetime(year+1, 1, 1, 0, 0, 0)
+    start_date = datetime(year, 1, 1, 0, 0, 0, tzinfo=_tz)
+    end_date = datetime(year+1, 1, 1, 0, 0, 0, tzinfo=_tz)
     days_in_year = (end_date - start_date).days
     day_of_year = date.timetuple().tm_yday  # 1-indexed (Jan 1 = 1)
 
@@ -46,7 +51,7 @@ def capture_keyframe():
 
     # Generate filename pattern with current date
     # %02d will be replaced by ffmpeg with sequential frame numbers (01, 02, etc.)
-    filename_pattern = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_%02d.png"
+    filename_pattern = datetime.now(_tz).strftime("%Y-%m-%d_%H-%M-%S") + "_%02d.png"
     filepath_pattern = os.path.join(settings.save_dir, filename_pattern)
 
     # Use ffmpeg to extract frames from the HLS stream:
@@ -61,7 +66,7 @@ def capture_keyframe():
         "-i", settings.tgmn_stream_url,
         "-vf", f"select='{select_expr}'",
         "-vsync", "vfr",
-        "-frames:v", "5",
+        "-frames:v", "10",
         "-y",
         filepath_pattern,
     ]
@@ -74,25 +79,25 @@ def capture_keyframe():
             timeout=60,
         )
         if result.returncode == 0:
-            logger.info("[%s] Keyframes saved as %s", datetime.now(), filepath_pattern)
+            logger.info("[%s] Keyframes saved as %s", datetime.now(_tz), filepath_pattern)
         else:
-            logger.info("[%s] Error capturing keyframes: %s", datetime.now(), result.stderr)
+            logger.info("[%s] Error capturing keyframes: %s", datetime.now(_tz), result.stderr)
     except subprocess.TimeoutExpired:
-        logger.info("[%s] Timeout while capturing keyframes", datetime.now())
+        logger.info("[%s] Timeout while capturing keyframes", datetime.now(_tz))
     except FileNotFoundError:
-        logger.info("[%s] ffmpeg not found. Please install ffmpeg.", datetime.now())
+        logger.info("[%s] ffmpeg not found. Please install ffmpeg.", datetime.now(_tz))
 
 
 def print_monthly_capture_times(year: int | None = None):
     """Print the capture time for the first day of every month."""
     if year is None:
-        year = datetime.now().year
+        year = datetime.now(_tz).year
     
     logger.info("Capture times for the 1st of each month in %s:", year)
     logger.info("-" * 40)
     
     for month in range(1, 13):
-        date = datetime(year, month, 1)
+        date = datetime(year, month, 1, tzinfo=_tz)
         capture_time = get_capture_time(date)
         month_name = calendar.month_name[month]
         logger.info("%s 1: %s", month_name, capture_time.strftime('%H:%M:%S'))
@@ -105,7 +110,7 @@ def get_next_capture_time() -> datetime:
     If today's capture time hasn't passed yet, return today's capture time.
     Otherwise, return tomorrow's capture time.
     """
-    now = datetime.now()
+    now = datetime.now(_tz)
     today_capture = get_capture_time(now)
     
     if now < today_capture:
@@ -117,11 +122,12 @@ def get_next_capture_time() -> datetime:
 
 def main():
     logger.info("Starting timelapse capture service...")
+    logger.info("Using timezone: %s", _settings.timezone)
     logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 24:00 on Jan 1 of the next year")
     
     while True:
         next_capture = get_next_capture_time()
-        now = datetime.now()
+        now = datetime.now(_tz)
         
         logger.info("Next capture scheduled for %s", next_capture)
         

@@ -1,10 +1,14 @@
 FROM python:3.12-slim
 
-# Install ffmpeg
+# Install ffmpeg and tzdata for timezone support
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get install -y --no-install-recommends ffmpeg tzdata && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Set default timezone to Oslo (can be overridden via TIMEZONE env var)
+ENV TZ=Europe/Oslo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /app
 
