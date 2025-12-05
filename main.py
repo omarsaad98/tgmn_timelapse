@@ -38,28 +38,32 @@ def get_capture_time(date: datetime) -> datetime:
     return start_of_day + timedelta(seconds=seconds_to_add_each_day * day_of_year)
     
 def capture_keyframe():
-    """Download a keyframe from the stream and save it as PNG."""
+    """Download frames from the stream starting at the first keyframe."""
     settings = Settings()
 
     # Ensure save directory exists
     os.makedirs(settings.save_dir, exist_ok=True)
 
-    # Generate filename with current date
-    filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".png"
-    filepath = os.path.join(settings.save_dir, filename)
+    # Generate filename pattern with current date
+    # %02d will be replaced by ffmpeg with sequential frame numbers (01, 02, etc.)
+    filename_pattern = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_%02d.png"
+    filepath_pattern = os.path.join(settings.save_dir, filename_pattern)
 
-    # Use ffmpeg to extract a single keyframe (I-frame) from the HLS stream
-    # -skip_frame nokey: Skip all frames except keyframes during decoding
-    # -i: Input stream URL
-    # -frames:v 1: Output only 1 video frame
-    # -y: Overwrite output file without asking
+    # Use ffmpeg to extract frames from the HLS stream:
+    # - select filter: Wait for first keyframe (I-frame), then capture next 4 consecutive frames
+    #   - eq(pict_type,I)*eq(selected_n,0): Select first keyframe (when nothing selected yet)
+    #   - gt(selected_n,0)*lt(selected_n,5): Select next 4 frames (when 1-4 frames already selected)
+    # - vsync vfr: Variable frame rate to avoid frame duplication
+    # - frames:v 5: Stop after 5 frames
+    select_expr = "(eq(pict_type,I)*eq(selected_n,0))+(gt(selected_n,0)*lt(selected_n,5))"
     cmd = [
         "ffmpeg",
-        "-skip_frame", "nokey",
         "-i", settings.tgmn_stream_url,
-        "-frames:v", "1",
+        "-vf", f"select='{select_expr}'",
+        "-vsync", "vfr",
+        "-frames:v", "5",
         "-y",
-        filepath,
+        filepath_pattern,
     ]
 
     try:
@@ -70,11 +74,11 @@ def capture_keyframe():
             timeout=60,
         )
         if result.returncode == 0:
-            logger.info("[%s] Keyframe saved as %s", datetime.now(), filepath)
+            logger.info("[%s] Keyframes saved as %s", datetime.now(), filepath_pattern)
         else:
-            logger.info("[%s] Error capturing keyframe: %s", datetime.now(), result.stderr)
+            logger.info("[%s] Error capturing keyframes: %s", datetime.now(), result.stderr)
     except subprocess.TimeoutExpired:
-        logger.info("[%s] Timeout while capturing keyframe", datetime.now())
+        logger.info("[%s] Timeout while capturing keyframes", datetime.now())
     except FileNotFoundError:
         logger.info("[%s] ffmpeg not found. Please install ffmpeg.", datetime.now())
 
@@ -113,7 +117,7 @@ def get_next_capture_time() -> datetime:
 
 def main():
     logger.info("Starting timelapse capture service...")
-    logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 00:00 on Jan 1 of the next year")
+    logger.info("Capture time linearly progresses from 00:00 on Jan 1 to 24:00 on Jan 1 of the next year")
     
     while True:
         next_capture = get_next_capture_time()
