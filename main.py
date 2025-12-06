@@ -26,11 +26,14 @@ def get_capture_time(date: datetime) -> datetime:
     
     Linearly interpolates from 00:00 on January 1st to 00:00 on January 1st of the next year.
     """
-    year = date.year
+    # Ensure date is in the target timezone before calculations
+    date_in_tz = date.astimezone(_tz)
+    year = date_in_tz.year
     start_date = datetime(year, 1, 1, 0, 0, 0, tzinfo=_tz)
     end_date = datetime(year+1, 1, 1, 0, 0, 0, tzinfo=_tz)
     days_in_year = (end_date - start_date).days
-    day_of_year = date.timetuple().tm_yday  # 1-indexed (Jan 1 = 1)
+    # Use toordinal() instead of timetuple().tm_yday to avoid timezone conversion issues
+    day_of_year = date_in_tz.toordinal() - datetime(year, 1, 1).toordinal() + 1  # 1-indexed (Jan 1 = 1)
 
     progress = (day_of_year - 1) / days_in_year
 
