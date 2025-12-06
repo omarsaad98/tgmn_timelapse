@@ -6,10 +6,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set default timezone to Oslo (can be overridden via TIMEZONE env var)
-ENV TZ=Europe/Oslo
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 WORKDIR /app
 
 # Copy dependency file and install dependencies

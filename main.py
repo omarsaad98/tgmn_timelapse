@@ -49,22 +49,16 @@ def capture_keyframe():
     # Ensure save directory exists
     os.makedirs(settings.save_dir, exist_ok=True)
 
+    now = datetime.now(_tz)
+
     # Generate filename pattern with current date
-    # %02d will be replaced by ffmpeg with sequential frame numbers (01, 02, etc.)
-    filename_pattern = datetime.now(_tz).strftime("%Y-%m-%d_%H-%M-%S") + "_%02d.png"
+    # %02d will be replaced by ffmpeg with sequential frame numbers (001, 002, etc.)
+    filename_pattern = now.strftime("%Y-%m-%d_%H-%M-%S") + "_%03d.png"
     filepath_pattern = os.path.join(settings.save_dir, filename_pattern)
 
-    # Use ffmpeg to extract frames from the HLS stream:
-    # - select filter: Wait for first keyframe (I-frame), then capture next 4 consecutive frames
-    #   - eq(pict_type,I)*eq(selected_n,0): Select first keyframe (when nothing selected yet)
-    #   - gt(selected_n,0)*lt(selected_n,5): Select next 4 frames (when 1-4 frames already selected)
-    # - vsync vfr: Variable frame rate to avoid frame duplication
-    # - frames:v 5: Stop after 5 frames
-    select_expr = "(eq(pict_type,I)*eq(selected_n,0))+(gt(selected_n,0)*lt(selected_n,5))"
     cmd = [
         "ffmpeg",
         "-i", settings.tgmn_stream_url,
-        "-vf", f"select='{select_expr}'",
         "-vsync", "vfr",
         "-frames:v", "10",
         "-y",
@@ -79,13 +73,13 @@ def capture_keyframe():
             timeout=60,
         )
         if result.returncode == 0:
-            logger.info("[%s] Keyframes saved as %s", datetime.now(_tz), filepath_pattern)
+            logger.info("Keyframes saved as %s", filepath_pattern)
         else:
-            logger.info("[%s] Error capturing keyframes: %s", datetime.now(_tz), result.stderr)
+            logger.info("Error capturing keyframes: %s", result.stderr)
     except subprocess.TimeoutExpired:
-        logger.info("[%s] Timeout while capturing keyframes", datetime.now(_tz))
+        logger.info("Timeout while capturing keyframes")
     except FileNotFoundError:
-        logger.info("[%s] ffmpeg not found. Please install ffmpeg.", datetime.now(_tz))
+        logger.info("ffmpeg not found. Please install ffmpeg.")
 
 
 def print_monthly_capture_times(year: int | None = None):
