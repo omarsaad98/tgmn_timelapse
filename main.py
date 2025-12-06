@@ -63,7 +63,7 @@ def capture_keyframe():
         "ffmpeg",
         "-i", settings.tgmn_stream_url,
         "-vsync", "vfr",
-        "-frames:v", "10",
+        "-frames:v", str(settings.number_of_frames),
         "-y",
         filepath_pattern,
     ]
@@ -73,7 +73,7 @@ def capture_keyframe():
             cmd,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=100,
         )
         if result.returncode == 0:
             logger.info("Keyframes saved as %s", filepath_pattern)
