@@ -62,7 +62,6 @@ def capture_keyframe():
     cmd = [
         "ffmpeg",
         "-i", settings.tgmn_stream_url,
-        "-vsync", "vfr",
         "-frames:v", str(settings.number_of_frames),
         "-y",
         filepath_pattern,
