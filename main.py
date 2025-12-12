@@ -128,9 +128,9 @@ def main():
         logger.info("Next capture scheduled for %s", next_capture)
         
         # Avoid time.sleep drift by using a loop
+        interval_time = 60.0*30 # 30 minutes
         while True:
             now = datetime.now(_tz)
-            interval_time = 60.0*30 # 30 minutes
             # Sleep until the next capture time
             sleep_seconds = (next_capture - now).total_seconds()
             if sleep_seconds > 0.0:
