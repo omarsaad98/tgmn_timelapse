@@ -133,9 +133,10 @@ def main():
             interval_time = 60.0*30 # 30 minutes
             # Sleep until the next capture time
             sleep_seconds = (next_capture - now).total_seconds()
-            if sleep_seconds > 1.0:
+            if sleep_seconds > 0.0:
                 time.sleep(min(sleep_seconds, interval_time))
-            break
+            else:
+                break
         
         # Capture the keyframe
         capture_keyframe()
