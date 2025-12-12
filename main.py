@@ -128,16 +128,21 @@ def main():
         
         logger.info("Next capture scheduled for %s", next_capture)
         
-        # Sleep until the next capture time
-        sleep_seconds = (next_capture - now).total_seconds()
-        if sleep_seconds > 0:
-            time.sleep(sleep_seconds)
+        # Avoid time.sleep drift by using a loop
+        while True:
+            now = datetime.now(_tz)
+            interval_time = 60.0*30 # 30 minutes
+            # Sleep until the next capture time
+            sleep_seconds = (next_capture - now).total_seconds()
+            if sleep_seconds > 1.0:
+                time.sleep(min(sleep_seconds, interval_time))
+            break
         
         # Capture the keyframe
         capture_keyframe()
         
         # Small delay to ensure we move past the capture time
-        time.sleep(1)
+        time.sleep(3)
 
 
 if __name__ == "__main__":
