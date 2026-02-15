@@ -3,5 +3,6 @@ __pycache__/
 .env
 
 saved_images/
+temp_frames/
 images.txt
 output.mp4
