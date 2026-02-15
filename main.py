@@ -46,7 +46,7 @@ def get_capture_time(date: datetime) -> datetime:
     return start_of_day + timedelta(seconds=seconds_to_add_each_day * day_of_year)
     
 def capture_keyframe():
-    """Download frames from the stream starting at the first keyframe."""
+    """Download a TS segment from the stream with no re-encoding."""
     settings = Settings()
 
     # Ensure save directory exists
@@ -54,17 +54,17 @@ def capture_keyframe():
 
     now = datetime.now(_tz)
 
-    # Generate filename pattern with current date
-    # %02d will be replaced by ffmpeg with sequential frame numbers (001, 002, etc.)
-    filename_pattern = now.strftime("%Y-%m-%d_%H-%M-%S") + "_%03d.png"
-    filepath_pattern = os.path.join(settings.save_dir, filename_pattern)
+    # Generate filename with current date
+    filename = now.strftime("%Y-%m-%d_%H-%M-%S") + ".ts"
+    filepath = os.path.join(settings.save_dir, filename)
 
     cmd = [
         "ffmpeg",
         "-i", settings.tgmn_stream_url,
-        "-frames:v", str(settings.number_of_frames),
+        "-c", "copy",
+        "-t", "1",  # Capture ~1 second of video (duration will contain at least number_of_frames)
         "-y",
-        filepath_pattern,
+        filepath,
     ]
 
     try:
@@ -75,11 +75,11 @@ def capture_keyframe():
             timeout=100,
         )
         if result.returncode == 0:
-            logger.info("Keyframes saved as %s", filepath_pattern)
+            logger.info("TS segment saved as %s", filepath)
         else:
-            logger.info("Error capturing keyframes: %s", result.stderr)
+            logger.info("Error capturing TS segment: %s", result.stderr)
     except subprocess.TimeoutExpired:
-        logger.info("Timeout while capturing keyframes")
+        logger.info("Timeout while capturing TS segment")
     except FileNotFoundError:
         logger.info("ffmpeg not found. Please install ffmpeg.")
 
